@@ -4,9 +4,13 @@ After=network.target
 
 [Service]
 ExecStart=/usr/bin/node /root/tonbot/app/app.js
+WorkingDirectory=/root/tonbot
 Restart=always
 User=root
+Environment=NODE_ENV=production
 EnvironmentFile=/root/tonbot/.env
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
