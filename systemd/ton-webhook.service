@@ -1,0 +1,12 @@
+[Unit]
+Description=TON Rescue Webhook Bot
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /root/tonbot/app/app.js
+Restart=always
+User=root
+EnvironmentFile=/root/tonbot/.env
+
+[Install]
+WantedBy=multi-user.target
