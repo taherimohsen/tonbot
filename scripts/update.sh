@@ -1,2 +1,5 @@
 #!/bin/bash
-# update script placeholder
+cd /root/tonbot
+git pull
+npm install
+systemctl restart ton-webhook
