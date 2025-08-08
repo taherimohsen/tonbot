@@ -1,54 +1,38 @@
 #!/bin/bash
-set -e
-
 DOMAIN=$1
-EMAIL="bot@techtarfand.sbs"
+EMAIL=$2
 REPO=$3
 
-if [ -z "$DOMAIN" ] || [ -z "$REPO" ]; then
+if [ -z "$DOMAIN" ] || [ -z "$EMAIL" ] || [ -z "$REPO" ]; then
     echo "Usage: $0 <domain> <email> <repo>"
     exit 1
 fi
 
-apt update
-apt install -y curl git ufw nginx certbot python3-certbot-nginx nodejs npm
+apt update && apt install -y nginx certbot python3-certbot-nginx git curl nodejs npm ufw
 
 ufw allow 80
 ufw allow 443
-
-# SSL
-certbot certonly --standalone --agree-tos -m $EMAIL -d $DOMAIN --non-interactive
 
 # Clone repo
 rm -rf /root/tonbot
 git clone $REPO /root/tonbot
 
-# Install dependencies
-cd /root/tonbot
-npm install
+# Nginx config
+cp /root/tonbot/nginx/ton-bot.conf.template /etc/nginx/sites-available/tonbot.conf
+sed -i "s/__DOMAIN__/$DOMAIN/g" /etc/nginx/sites-available/tonbot.conf
+ln -sf /etc/nginx/sites-available/tonbot.conf /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
 
-# Setup systemd service
-cat <<EOF >/etc/systemd/system/ton-webhook.service
-[Unit]
-Description=TON Webhook Bot
-After=network.target
+# SSL with email pre-set
+certbot --nginx -d $DOMAIN --non-interactive --agree-tos -m $EMAIL
 
-[Service]
-ExecStart=/usr/bin/npm start
-WorkingDirectory=/root/tonbot
-Restart=always
-User=root
-Environment=NODE_ENV=production
-StandardOutput=syslog
-StandardError=syslog
-SyslogIdentifier=ton-webhook
+# Node.js dependencies
+npm install --prefix /root/tonbot
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
+# Systemd service
+cp /root/tonbot/systemd/ton-webhook.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable ton-webhook
 systemctl start ton-webhook
 
-echo "Installation complete. Bot running with SSL on $DOMAIN"
+echo "✅ Installation complete: https://$DOMAIN"
